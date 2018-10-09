@@ -112,6 +112,7 @@ public final class RetryAndFollowUpInterceptor implements Interceptor {
         call, eventListener, callStackTrace);
 
     int followUpCount = 0;
+	int retryCoutn = 0;
     Response priorResponse = null;
     while (true) {
       if (canceled) {
@@ -121,7 +122,15 @@ public final class RetryAndFollowUpInterceptor implements Interceptor {
 
       Response response;
       boolean releaseConnection = true;
-      try {
+      try {		
+		//add customize parameter to flag retry count 1-10		
+		if(retryCoutn >= 1 && retryCoutn <= 10 && request != null){			
+			Request.Builder builder = request.newBuilder();
+			builder.header("Retry-Count", retryCoutn+"");
+			request = builder.build();
+		}        
+		retryCoutn++;
+			
         response = realChain.proceed(request, streamAllocation, null, null);
         releaseConnection = false;
       } catch (RouteException e) {
@@ -129,7 +138,7 @@ public final class RetryAndFollowUpInterceptor implements Interceptor {
         if (!recover(e.getLastConnectException(), false, request)) {
           throw e.getLastConnectException();
         }
-        releaseConnection = false;
+        releaseConnection = false;		
         continue;
       } catch (IOException e) {
         // An attempt to communicate with a server failed. The request may have been sent.
